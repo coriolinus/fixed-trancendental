@@ -117,14 +117,11 @@ where
     }
     let mut y: N = 1.saturating_to_fixed();
     while pow > one {
-        if pow & one == zero {
-            x *= x;
-            pow >>= 1;
-        } else {
+        if pow & one != zero {
             y *= x;
-            x *= x;
-            pow >>= 1;
         }
+        x *= x;
+        pow >>= 1;
     }
     x * y
 }
@@ -211,6 +208,10 @@ mod tests {
                             }
                         }
 
+                        // Note that as of version `1.9.0` of `fixed`, this test fails because
+                        // multiplication does not reliably produce accurate results.
+                        //
+                        // https://gitlab.com/tspiteri/fixed/-/issues/33
                         #[rstest]
                         fn test_powi(
                             #[values(
@@ -240,14 +241,15 @@ mod tests {
                             power: u8,
                         ) {
                             if let Some(fixed) = base.checked_to_fixed::<$fixed>() {
-                                dbg!(base, power);
+                                dbg!(base, power, fixed);
                                 let expect = dbg!(base.powi(power.into()));
                                 if expect >= f64::from_fixed($fixed::MAX) {
                                     return; // will overflow
                                 }
                                 let computed = dbg!(powi(fixed, power.into()));
+                                dbg!($fixed::from_bits(computed.to_bits()-1));
                                 let diff = (expect - f64::from_fixed(computed)).abs();
-                                assert!(dbg!(diff) <= dbg!(f64::from_fixed($fixed::DELTA)));
+                                assert!(dbg!(diff) <= dbg!(f64::from_fixed(dbg!($fixed::DELTA))));
                             }
                         }
                     }
